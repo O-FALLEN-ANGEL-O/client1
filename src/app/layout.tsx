@@ -23,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={cn("font-sans antialiased", inter.variable)}>
+    <html lang="en">
+      <body className={cn("font-sans antialiased", inter.variable)} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
             {children}
