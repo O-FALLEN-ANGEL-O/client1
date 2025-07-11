@@ -115,7 +115,10 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     if (!isInitialLoad) {
-      fetchPayments();
+      const handler = setTimeout(() => {
+        fetchPayments();
+      }, 500); // Debounce requests
+      return () => clearTimeout(handler);
     }
   }, [searchTerm, date, paymentType, schoolName, courseName, isInitialLoad, fetchPayments]);
 
@@ -142,7 +145,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <Button onClick={handleExport}>
+        <Button onClick={handleExport} className="w-full sm:w-auto">
           <FileDown className="mr-2 h-4 w-4" />
           Export to Excel
         </Button>
@@ -202,30 +205,35 @@ export default function DashboardPage() {
           </SelectContent>
         </Select>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:col-span-2">
-            <Select value={schoolName} onValueChange={setSchoolName}>
-                <SelectTrigger><SelectValue placeholder="School" /></SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Schools</SelectItem>
-                    {schools.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            <Select value={courseName} onValueChange={setCourseName}>
-                <SelectTrigger><SelectValue placeholder="Course" /></SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Courses</SelectItem>
-                    {courses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
-                </SelectContent>
-            </Select>
-        </div>
+        <Select value={schoolName} onValueChange={setSchoolName} className="lg:col-start-4">
+            <SelectTrigger><SelectValue placeholder="School" /></SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Schools</SelectItem>
+                {schools.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+            </SelectContent>
+        </Select>
+        <Select value={courseName} onValueChange={setCourseName}>
+            <SelectTrigger><SelectValue placeholder="Course" /></SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Courses</SelectItem>
+                {courses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+            </SelectContent>
+        </Select>
       </div>
         
-      {loading ? (
+      {loading && isInitialLoad ? (
         <div className="flex h-64 w-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <DataTable columns={columns} data={data} />
+        <div className="relative">
+          {loading && !isInitialLoad && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          )}
+          <DataTable columns={columns} data={data} />
+        </div>
       )}
     </div>
   )

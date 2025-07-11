@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import * as XLSX from 'xlsx';
@@ -13,12 +14,9 @@ export function exportToExcel(filename: string, reportData: object[]) {
   }
 
   // --- Data Preparation ---
-  const ws_data = [
-    Object.keys(reportData[0]), // Header row
-    ...reportData.map(row => Object.values(row)) // Data rows
-  ];
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+  // Create a worksheet from the JSON data.
+  // The keys of the first object are used as headers.
+  const ws = XLSX.utils.json_to_sheet(reportData);
 
   // --- Styling ---
   const headerStyle = {
@@ -42,30 +40,37 @@ export function exportToExcel(filename: string, reportData: object[]) {
     },
   };
 
-  // --- Apply Styles to all cells ---
+  // Get the range of the worksheet
   const range = XLSX.utils.decode_range(ws['!ref']!);
-  for (let R = range.s.r; R <= range.e.r; ++R) {
-    for (let C = range.s.c; C <= range.e.c; ++C) {
+  const colWidths = [];
+
+  // --- Apply Styles and Calculate Column Widths ---
+  for (let C = range.s.c; C <= range.e.c; ++C) {
+    let maxWidth = 0;
+    for (let R = range.s.r; R <= range.e.r; ++R) {
       const cell_address = { c: C, r: R };
       const cell_ref = XLSX.utils.encode_cell(cell_address);
       if (ws[cell_ref]) {
+        // Apply styles
          ws[cell_ref].s = (R === 0) ? headerStyle : cellStyle;
+
+         // Calculate width
+         const cellValue = ws[cell_ref].v;
+         const cellTextLength = cellValue ? String(cellValue).length : 0;
+         if (cellTextLength > maxWidth) {
+           maxWidth = cellTextLength;
+         }
       }
     }
+     // Add a little padding to the max width
+    colWidths.push({ wch: maxWidth + 2 });
   }
 
-  // --- Column Widths ---
-  const colWidths = Object.keys(reportData[0]).map(key => {
-    // Get the max length of header or data in the column
-    const maxLength = Math.max(
-      key.length,
-      ...reportData.map(row => String((row as any)[key] || "").length)
-    );
-    return { wch: maxLength + 2 }; // Add padding
-  });
+  // Set column widths
   ws['!cols'] = colWidths;
   
-  // --- Append and Download ---
+  // --- Create Workbook and Download ---
+  const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Payment Report");
   XLSX.writeFile(wb, filename);
 }

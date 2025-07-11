@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import {
@@ -22,6 +23,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -38,9 +44,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     }
   }, [isUnauthorized, router]);
   
-  if (loading || !user || isUnauthorized) {
+  if (!isClient || loading || !user || isUnauthorized) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -61,13 +67,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </Sidebar>
       <SidebarInset>
         <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-          <SidebarTrigger className="md:hidden" />
+          <SidebarTrigger />
           <div className="w-full flex-1">
             {/* Can add search or breadcrumbs here */}
           </div>
           <UserNav />
         </header>
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
