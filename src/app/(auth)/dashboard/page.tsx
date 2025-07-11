@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { Calendar as CalendarIcon, FileDown, Loader2 } from 'lucide-react'
 import { format, type DateRange } from 'date-fns'
-import { cn, exportToCsv } from '@/lib/utils'
+import { cn, exportToStyledExcel } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase-client'
 import { useToast } from '@/hooks/use-toast'
@@ -115,19 +115,9 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     if (!isInitialLoad) {
-      const handler = setTimeout(() => {
-        fetchPayments();
-      }, 500); // Debounce search term input
-      return () => clearTimeout(handler);
+      fetchPayments();
     }
-  }, [searchTerm, isInitialLoad, fetchPayments]);
-
-  React.useEffect(() => {
-    if (!isInitialLoad) {
-        fetchPayments();
-    }
-  }, [date, paymentType, schoolName, courseName, isInitialLoad, fetchPayments]);
-
+  }, [searchTerm, date, paymentType, schoolName, courseName, isInitialLoad, fetchPayments]);
 
   const handleExport = () => {
     if (!data.length) {
@@ -144,8 +134,6 @@ export default function DashboardPage() {
       'Payment Type': p.paymentType,
       'Date': format(new Date(p.date), 'yyyy-MM-dd')
     }));
-
-    exportToCsv('Payment_Report.csv', paymentReportData)
     
     const powerBiData = data.map(p => ({
         studentId: p.studentId,
@@ -157,7 +145,7 @@ export default function DashboardPage() {
         date: format(new Date(p.date), 'yyyy-MM-dd')
       }));
     
-    exportToCsv('Power_BI_Data.csv', powerBiData)
+    exportToStyledExcel('SmartFeeTracker_Report.xlsx', paymentReportData, powerBiData);
   }
 
   return (
