@@ -20,9 +20,35 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 async function seedData() {
   console.log('Starting to seed data...');
 
-  // Note: This script assumes you have tables named 'schools', 'courses', and 'payments'.
-  // You must create these tables in your Supabase dashboard before running the seed script.
-  // The columns should match the structure of the mock data objects.
+  // --- Clean up existing data ---
+  console.log('Deleting existing data...');
+  const { error: deletePaymentsError } = await supabase.from('payments').delete().neq('id', 'placeholder');
+  if (deletePaymentsError) console.error('Error deleting payments:', deletePaymentsError.message);
+
+  const { error: deleteCoursesError } = await supabase.from('courses').delete().neq('id', 'placeholder');
+  if (deleteCoursesError) console.error('Error deleting courses:', deleteCoursesError.message);
+  
+  const { error: deleteSchoolsError } = await supabase.from('schools').delete().neq('id', 'placeholder');
+  if (deleteSchoolsError) console.error('Error deleting schools:', deleteSchoolsError.message);
+
+  const { data: authUsers, error: listUsersError } = await supabase.auth.admin.listUsers();
+    if (listUsersError) {
+        console.error('Error listing users:', listUsersError.message);
+    } else {
+        for (const user of authUsers.users) {
+            // Don't delete the default supabase user
+            if (user.email !== 'supabase_admin@supabase.io') {
+                 const { error: deleteProfileError } = await supabase.from('users').delete().eq('id', user.id);
+                 if (deleteProfileError) console.error(`Error deleting profile for ${user.email}:`, deleteProfileError.message);
+
+                const { error: deleteAuthUserError } = await supabase.auth.admin.deleteUser(user.id);
+                if (deleteAuthUserError) console.error(`Error deleting auth user ${user.email}:`, deleteAuthUserError.message);
+            }
+        }
+    }
+  console.log('Finished deleting data.');
+  // -----------------------------
+
 
   // Seed users
   console.log('Seeding users...');
@@ -46,7 +72,7 @@ async function seedData() {
       });
 
       if (profileError) {
-        console.error(`Error creating profile for ${user.email}:`, profileError);
+        console.error(`Error creating profile for ${user.email}:`, profileError.message);
       } else {
         console.log(`Profile for ${user.email} created successfully.`);
       }
@@ -58,7 +84,7 @@ async function seedData() {
   console.log('Seeding schools...');
   const { error: schoolsError } = await supabase.from('schools').insert(schools);
   if (schoolsError) {
-    console.error('Error seeding schools:', schoolsError);
+    console.error('Error seeding schools:', schoolsError.message);
   } else {
     console.log('Successfully seeded schools.');
   }
@@ -67,21 +93,19 @@ async function seedData() {
   console.log('Seeding courses...');
   const { error: coursesError } = await supabase.from('courses').insert(courses);
   if (coursesError) {
-    console.error('Error seeding courses:', coursesError);
+    console.error('Error seeding courses:', coursesError.message);
   } else {
     console.log('Successfully seeded courses.');
   }
 
   // Seed payments
-  // Seeding a large number of payments might be slow or hit limits.
-  // We'll insert them in chunks to be safe.
   console.log('Seeding payments...');
   const chunkSize = 100;
   for (let i = 0; i < payments.length; i += chunkSize) {
     const chunk = payments.slice(i, i + chunkSize);
     const { error: paymentsError } = await supabase.from('payments').insert(chunk);
     if (paymentsError) {
-      console.error(`Error seeding payments chunk ${i / chunkSize + 1}:`, paymentsError);
+      console.error(`Error seeding payments chunk ${i / chunkSize + 1}:`, paymentsError.message);
       // Optional: stop on first error
       // break; 
     }
@@ -92,3 +116,4 @@ async function seedData() {
 }
 
 seedData().catch(console.error);
+
