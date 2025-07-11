@@ -11,18 +11,19 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 
-export interface ColumnDef<T> {
+export interface ColumnDef<TData> {
   header: string;
-  accessorKey?: keyof T;
-  cell?: (row: T) => React.ReactNode;
+  accessorKey?: keyof TData;
+  cell?: (props: { row: { original: TData } }) => React.ReactNode;
+  id?: string;
 }
 
-interface DataTableProps<T> {
-  columns: ColumnDef<T>[];
-  data: T[];
+interface DataTableProps<TData> {
+  columns: ColumnDef<TData>[];
+  data: TData[];
 }
 
-export function DataTable<T>({ columns, data }: DataTableProps<T>) {
+export function DataTable<TData extends {id: string}>({ columns, data }: DataTableProps<TData>) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const rowsPerPage = 10;
 
@@ -42,19 +43,19 @@ export function DataTable<T>({ columns, data }: DataTableProps<T>) {
         <Table>
           <TableHeader>
             <TableRow>
-              {columns.map((column, index) => (
-                <TableHead key={index}>{column.header}</TableHead>
+              {columns.map((column) => (
+                <TableHead key={column.header}>{column.header}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedData.length ? (
-              paginatedData.map((row, rowIndex) => (
-                <TableRow key={rowIndex}>
-                  {columns.map((column, colIndex) => (
-                    <TableCell key={colIndex}>
+              paginatedData.map((row) => (
+                <TableRow key={row.id}>
+                  {columns.map((column) => (
+                    <TableCell key={column.header}>
                       {column.cell
-                        ? column.cell(row)
+                        ? column.cell({ row: { original: row } })
                         : column.accessorKey
                         ? String((row as any)[column.accessorKey])
                         : null}

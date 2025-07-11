@@ -39,7 +39,9 @@ export default function LoginPage() {
     const success = await login(email, password);
     setIsSubmitting(false);
     if (!success) {
-      setError('Invalid email or password. Check your Supabase credentials.');
+      setError('Invalid email or password. Please try again.');
+    } else {
+      router.replace('/dashboard');
     }
   };
 

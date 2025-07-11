@@ -1,26 +1,23 @@
 "use client";
 
-import React from 'react';
-import { schools as mockSchools, type School } from '@/lib/mock-data';
+import React, { useEffect, useState } from 'react';
+import { type School } from '@/lib/mock-data';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { createClient } from '@/lib/supabase-client';
+import { useToast } from '@/hooks/use-toast';
 
-function SchoolForm({ school, onSave, onOpenChange }: { school: Partial<School> | null, onSave: (school: School) => void, onOpenChange: (open: boolean) => void }) {
-  const [formData, setFormData] = React.useState(school || {});
+function SchoolForm({ school, onSave, onCancel }: { school: Partial<School> | null, onSave: (school: Partial<School>) => void, onCancel: () => void }) {
+  const [formData, setFormData] = useState(school || {});
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newSchool = {
-      id: formData.id || `sch_${Date.now()}`,
-      ...formData
-    } as School;
-    onSave(newSchool);
-    onOpenChange(false);
+    onSave(formData);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,35 +35,89 @@ function SchoolForm({ school, onSave, onOpenChange }: { school: Partial<School> 
         <Label htmlFor="city">City</Label>
         <Input id="city" name="city" value={formData.city || ''} onChange={handleChange} required />
       </div>
-      <Button type="submit">Save School</Button>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="submit">Save School</Button>
+      </div>
     </form>
   );
 }
 
 export default function SchoolsPage() {
-  const [schools, setSchools] = React.useState(mockSchools);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [editingSchool, setEditingSchool] = React.useState<Partial<School> | null>(null);
+  const [schools, setSchools] = useState<School[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingSchool, setEditingSchool] = useState<Partial<School> | null>(null);
+  const [supabase] = useState(() => createClient());
+  const { toast } = useToast();
 
-  const handleSave = (school: School) => {
-    if (editingSchool?.id) {
-      setSchools(prev => prev.map(s => s.id === school.id ? school : s));
+  const fetchSchools = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('schools').select('*').order('name');
+    if (error) {
+      toast({ title: "Error fetching schools", description: error.message, variant: "destructive" });
     } else {
-      setSchools(prev => [...prev, school]);
+      setSchools(data as School[]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchSchools();
+  }, []);
+
+  const handleSave = async (school: Partial<School>) => {
+    const isEditing = !!school.id;
+    const schoolData = {
+        name: school.name,
+        city: school.city,
+    };
+
+    let error;
+    if (isEditing) {
+        const { error: updateError } = await supabase.from('schools').update(schoolData).eq('id', school.id!);
+        error = updateError;
+    } else {
+        const { error: insertError } = await supabase.from('schools').insert({...schoolData, id: `sch_${Date.now()}`});
+        error = insertError;
+    }
+    
+    if (error) {
+      toast({ title: `Error saving school`, description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `School ${isEditing ? 'updated' : 'created'} successfully` });
+      await fetchSchools();
+      setIsDialogOpen(false);
+      setEditingSchool(null);
+    }
+  };
+  
+  const handleDelete = async (schoolId: string) => {
+    if (!window.confirm("Are you sure you want to delete this school?")) return;
+
+    const { error } = await supabase.from('schools').delete().eq('id', schoolId);
+    if (error) {
+        toast({ title: "Error deleting school", description: error.message, variant: "destructive" });
+    } else {
+        toast({ title: "School deleted successfully" });
+        await fetchSchools();
     }
   };
 
-  const handleDelete = (schoolId: string) => {
-    setSchools(prev => prev.filter(s => s.id !== schoolId));
+  const handleOpenDialog = (school: Partial<School> | null = null) => {
+    setEditingSchool(school);
+    setIsDialogOpen(true);
   };
   
   const columns: ColumnDef<School>[] = [
     { header: 'School Name', accessorKey: 'name' },
     { header: 'City', accessorKey: 'city' },
     {
+      id: 'actions',
       header: 'Actions',
-      cell: (row) => (
-        <Dialog>
+      cell: ({ row }) => {
+        const school = row.original;
+        return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -76,49 +127,52 @@ export default function SchoolsPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                 <DialogTrigger asChild onSelect={() => setEditingSchool(row)}>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>Edit</DropdownMenuItem>
-                </DialogTrigger>
-                <DropdownMenuItem onClick={() => handleDelete(row.id)}>Delete</DropdownMenuItem>
+                 <DropdownMenuItem onClick={() => handleOpenDialog(school)}>Edit</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDelete(school.id)}>Delete</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Edit School</DialogTitle>
-                    <DialogDescription>
-                        Make changes to the school details here. Click save when you're done.
-                    </DialogDescription>
-                </DialogHeader>
-                <SchoolForm school={row} onSave={handleSave} onOpenChange={() => {}}/>
-            </DialogContent>
-        </Dialog>
-      ),
+        );
+      },
     },
   ];
+
+  if (loading) {
+    return (
+        <div className="flex h-full w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">School Management</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingSchool(null)}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add School
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingSchool ? 'Edit School' : 'Add New School'}</DialogTitle>
-              <DialogDescription>
-                Fill in the details to create a new school.
-              </DialogDescription>
-            </DialogHeader>
-            <SchoolForm school={editingSchool} onSave={handleSave} onOpenChange={setIsDialogOpen} />
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => handleOpenDialog()}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add School
+        </Button>
       </div>
       <DataTable columns={columns} data={schools} />
+      
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingSchool?.id ? 'Edit School' : 'Add New School'}</DialogTitle>
+              <DialogDescription>
+                {editingSchool?.id ? 'Make changes to the school details here.' : 'Fill in the details to create a new school.'} Click save when you're done.
+              </DialogDescription>
+            </DialogHeader>
+            <SchoolForm 
+                school={editingSchool} 
+                onSave={handleSave} 
+                onCancel={() => {
+                    setIsDialogOpen(false);
+                    setEditingSchool(null);
+                }} 
+            />
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }

@@ -1,17 +1,19 @@
 "use client"
 
 import * as React from 'react'
-import { payments, schools, courses, type Payment } from '@/lib/mock-data'
+import { type School, type Course, type Payment } from '@/lib/mock-data'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { Calendar as CalendarIcon, FileDown } from 'lucide-react'
+import { Calendar as CalendarIcon, FileDown, Loader2 } from 'lucide-react'
 import { format, type DateRange } from 'date-fns'
 import { cn, exportToCsv } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { createClient } from '@/lib/supabase-client'
+import { useToast } from '@/hooks/use-toast'
 
 const columns: ColumnDef<Payment>[] = [
   { header: 'Student ID', accessorKey: 'studentId' },
@@ -20,30 +22,63 @@ const columns: ColumnDef<Payment>[] = [
   { header: 'School', accessorKey: 'school' },
   {
     header: 'Amount',
-    cell: (row) => `$${row.amount.toFixed(2)}`,
+    cell: ({row}) => `$${row.original.amount.toFixed(2)}`,
   },
   {
     header: 'Payment Type',
-    cell: (row) => {
+    accessorKey: 'paymentType',
+    cell: ({row}) => {
         let variant: 'default' | 'secondary' | 'outline' = 'secondary'
-        if (row.paymentType === 'Credit Card') variant = 'default'
-        if (row.paymentType === 'Bank Transfer') variant = 'outline'
-        return <Badge variant={variant}>{row.paymentType}</Badge>
+        if (row.original.paymentType === 'Credit Card') variant = 'default'
+        if (row.original.paymentType === 'Bank Transfer') variant = 'outline'
+        return <Badge variant={variant}>{row.original.paymentType}</Badge>
     }
   },
   {
     header: 'Date',
-    cell: (row) => format(row.date, 'PPP'),
+    accessorKey: 'date',
+    cell: ({row}) => format(new Date(row.original.date), 'PPP'),
   },
 ]
 
 export default function DashboardPage() {
-  const [data, setData] = React.useState<Payment[]>(payments)
+  const [data, setData] = React.useState<Payment[]>([])
+  const [schools, setSchools] = React.useState<School[]>([]);
+  const [courses, setCourses] = React.useState<Course[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
   const [searchTerm, setSearchTerm] = React.useState('')
   const [date, setDate] = React.useState<DateRange | undefined>()
   const [paymentType, setPaymentType] = React.useState('')
   const [schoolName, setSchoolName] = React.useState('')
   const [courseName, setCourseName] = React.useState('')
+  
+  const [supabase] = React.useState(() => createClient());
+  const { toast } = useToast();
+
+  const fetchData = async () => {
+    setLoading(true);
+    const [paymentsRes, schoolsRes, coursesRes] = await Promise.all([
+        supabase.from('payments').select('*'),
+        supabase.from('schools').select('*'),
+        supabase.from('courses').select('*'),
+    ]);
+
+    if (paymentsRes.error) toast({ title: "Error fetching payments", description: paymentsRes.error.message, variant: 'destructive' });
+    else setData(paymentsRes.data as Payment[]);
+
+    if (schoolsRes.error) toast({ title: "Error fetching schools", description: schoolsRes.error.message, variant: 'destructive' });
+    else setSchools(schoolsRes.data as School[]);
+
+    if (coursesRes.error) toast({ title: "Error fetching courses", description: coursesRes.error.message, variant: 'destructive' });
+    else setCourses(coursesRes.data as Course[]);
+
+    setLoading(false);
+  }
+
+  React.useEffect(() => {
+    fetchData();
+  }, []);
 
   const filteredData = React.useMemo(() => {
     return data.filter(payment => {
@@ -53,7 +88,7 @@ export default function DashboardPage() {
         payment.studentId.toLowerCase().includes(lowerSearchTerm) : true
 
       const matchesDate = date?.from && date?.to ?
-        payment.date >= date.from && payment.date <= date.to : true
+        new Date(payment.date) >= date.from && new Date(payment.date) <= date.to : true
 
       const matchesPaymentType = paymentType ? payment.paymentType === paymentType : true
       const matchesSchool = schoolName ? payment.school === schoolName : true
@@ -71,12 +106,11 @@ export default function DashboardPage() {
       'School': p.school,
       'Amount': p.amount,
       'Payment Type': p.paymentType,
-      'Date': format(p.date, 'yyyy-MM-dd')
+      'Date': format(new Date(p.date), 'yyyy-MM-dd')
     }));
 
     exportToCsv('Payment_Report.csv', paymentReportData)
     
-    // For Power BI, we normalize headers
     const powerBiData = filteredData.map(p => ({
         studentId: p.studentId,
         studentName: p.studentName,
@@ -84,10 +118,18 @@ export default function DashboardPage() {
         school: p.school,
         amount: p.amount,
         paymentType: p.paymentType,
-        date: format(p.date, 'yyyy-MM-dd')
+        date: format(new Date(p.date), 'yyyy-MM-dd')
       }));
     
     exportToCsv('Power_BI_Data.csv', powerBiData)
+  }
+
+  if (loading) {
+    return (
+        <div className="flex h-full w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    );
   }
 
   return (
@@ -154,7 +196,7 @@ export default function DashboardPage() {
           </SelectContent>
         </Select>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:col-span-2">
             <Select value={schoolName} onValueChange={setSchoolName}>
                 <SelectTrigger><SelectValue placeholder="School" /></SelectTrigger>
                 <SelectContent>

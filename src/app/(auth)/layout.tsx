@@ -38,22 +38,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     }
   }, [isUnauthorized, router]);
   
-  if (loading || !user) {
+  if (loading || !user || isUnauthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
-
-  if (isUnauthorized) {
-     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <p>Redirecting...</p>
-      </div>
-    );
-  }
-
+  
   return (
     <SidebarProvider>
       <Sidebar>
