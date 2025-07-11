@@ -59,7 +59,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
 
   const fetchFilters = async () => {
-    setLoading(true);
+    // No need to set loading here, initial load handles it
     const [schoolsRes, coursesRes] = await Promise.all([
         supabase.from('schools').select('*').order('name'),
         supabase.from('courses').select('*').order('name'),
@@ -115,10 +115,7 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     if (!isInitialLoad) {
-      const handler = setTimeout(() => {
-        fetchPayments();
-      }, 500); // Debounce requests
-      return () => clearTimeout(handler);
+      fetchPayments();
     }
   }, [searchTerm, date, paymentType, schoolName, courseName, isInitialLoad, fetchPayments]);
 
@@ -151,12 +148,12 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Input
           placeholder="Filter by Student ID/Name..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="lg:col-span-2"
+          className="sm:col-span-2 lg:col-span-2"
         />
         <Popover>
           <PopoverTrigger asChild>
@@ -205,7 +202,7 @@ export default function DashboardPage() {
           </SelectContent>
         </Select>
 
-        <Select value={schoolName} onValueChange={setSchoolName} className="lg:col-start-4">
+        <Select value={schoolName} onValueChange={setSchoolName}>
             <SelectTrigger><SelectValue placeholder="School" /></SelectTrigger>
             <SelectContent>
                 <SelectItem value="all">All Schools</SelectItem>

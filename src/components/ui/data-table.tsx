@@ -37,14 +37,22 @@ export function DataTable<TData extends {id: string}>({ columns, data }: DataTab
 
   const totalPages = data ? Math.ceil(data.length / rowsPerPage) : 0;
 
+  // Reset to page 1 if data changes and current page is out of bounds
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [data, currentPage, totalPages]);
+
+
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               {columns.map((column) => (
-                <TableHead key={column.header}>{column.header}</TableHead>
+                <TableHead key={column.id || column.header}>{column.header}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -53,7 +61,7 @@ export function DataTable<TData extends {id: string}>({ columns, data }: DataTab
               paginatedData.map((row) => (
                 <TableRow key={row.id}>
                   {columns.map((column) => (
-                    <TableCell key={column.header}>
+                    <TableCell key={column.id || column.header}>
                       {column.cell
                         ? column.cell({ row: { original: row } })
                         : column.accessorKey
@@ -76,7 +84,7 @@ export function DataTable<TData extends {id: string}>({ columns, data }: DataTab
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-sm text-muted-foreground">
           Page {totalPages > 0 ? currentPage : 0} of {totalPages}
         </div>

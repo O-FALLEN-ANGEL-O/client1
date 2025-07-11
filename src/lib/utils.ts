@@ -7,18 +7,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function exportToExcel(filename: string, reportData: object[]) {
-  if (!reportData.length) {
+export function exportToExcel(filename: string, reportData: any[]) {
+  if (!reportData || reportData.length === 0) {
     console.warn("No data to export.");
     return;
   }
 
-  // --- Data Preparation ---
-  // Create a worksheet from the JSON data.
-  // The keys of the first object are used as headers.
-  const ws = XLSX.utils.json_to_sheet(reportData);
+  // --- 1. Create Worksheet from Data ---
+  const headers = Object.keys(reportData[0]);
+  const data = [
+    headers,
+    ...reportData.map(row => headers.map(header => row[header]))
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(data);
 
-  // --- Styling ---
+  // --- 2. Define Styles ---
   const headerStyle = {
     font: { bold: true },
     alignment: { horizontal: "center", vertical: "center" },
@@ -40,36 +43,39 @@ export function exportToExcel(filename: string, reportData: object[]) {
     },
   };
 
-  // Get the range of the worksheet
+  // --- 3. Apply Styles and Calculate Column Widths ---
+  const colWidths = [] as { wch: number }[];
   const range = XLSX.utils.decode_range(ws['!ref']!);
-  const colWidths = [];
 
-  // --- Apply Styles and Calculate Column Widths ---
   for (let C = range.s.c; C <= range.e.c; ++C) {
     let maxWidth = 0;
     for (let R = range.s.r; R <= range.e.r; ++R) {
       const cell_address = { c: C, r: R };
       const cell_ref = XLSX.utils.encode_cell(cell_address);
-      if (ws[cell_ref]) {
-        // Apply styles
-         ws[cell_ref].s = (R === 0) ? headerStyle : cellStyle;
+      
+      // Ensure cell exists
+      if (!ws[cell_ref]) continue;
 
-         // Calculate width
-         const cellValue = ws[cell_ref].v;
-         const cellTextLength = cellValue ? String(cellValue).length : 0;
-         if (cellTextLength > maxWidth) {
-           maxWidth = cellTextLength;
-         }
+      // Apply styles
+      ws[cell_ref].s = (R === 0) ? headerStyle : cellStyle;
+
+      // Calculate width
+      const cellValue = ws[cell_ref].v;
+      const cellTextLength = cellValue ? String(cellValue).length : 0;
+      if (cellTextLength > maxWidth) {
+        maxWidth = cellTextLength;
       }
     }
-     // Add a little padding to the max width
+    // Add a little padding to the max width, with a minimum for headers
+    const headerTextLength = headers[C] ? headers[C].length : 0;
+    maxWidth = Math.max(maxWidth, headerTextLength);
     colWidths.push({ wch: maxWidth + 2 });
   }
 
   // Set column widths
   ws['!cols'] = colWidths;
   
-  // --- Create Workbook and Download ---
+  // --- 4. Create Workbook and Download ---
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Payment Report");
   XLSX.writeFile(wb, filename);

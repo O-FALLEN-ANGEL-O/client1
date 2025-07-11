@@ -6,7 +6,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, PlusCircle, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -143,12 +143,8 @@ export default function UsersPage() {
   
   const handleDelete = async (userId: string) => {
     if (!window.confirm("Are you sure you want to delete this user? This action is irreversible.")) return;
-
-    // We need to use an edge function or server-side call to delete from auth.users
-    // For now, we'll just delete from the public.users table.
-    // A more robust solution would involve an RPC call to a secure function.
-    const { error } = await supabase.from('users').delete().eq('id', userId);
     
+    const { error } = await supabase.from('users').delete().eq('id', userId);
     if (error) {
         toast({ title: "Error deleting user", description: "Could not delete user profile. Deleting from Auth requires server-side logic.", variant: "destructive" });
     } else {
@@ -200,9 +196,9 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
-        <Button onClick={() => handleOpenDialog()}>
+        <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Add User
         </Button>

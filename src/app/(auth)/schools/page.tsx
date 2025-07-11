@@ -6,7 +6,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, PlusCircle, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase-client';
@@ -78,7 +78,7 @@ export default function SchoolsPage() {
         const { error: updateError } = await supabase.from('schools').update(schoolData).eq('id', school.id!);
         error = updateError;
     } else {
-        const { error: insertError } = await supabase.from('schools').insert({...schoolData, id: `sch_${Date.now()}`});
+        const { error: insertError } = await supabase.from('schools').insert(schoolData);
         error = insertError;
     }
     
@@ -146,9 +146,9 @@ export default function SchoolsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">School Management</h1>
-        <Button onClick={() => handleOpenDialog()}>
+        <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Add School
         </Button>
