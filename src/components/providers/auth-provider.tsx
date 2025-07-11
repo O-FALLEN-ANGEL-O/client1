@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { User as SupabaseUser, SupabaseClient } from '@supabase/supabase-js';
 import { users as mockUsers, type User } from '@/lib/mock-data';
 
 interface AuthContextType {
@@ -19,11 +19,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const supabase = createClient();
 
   useEffect(() => {
+    // Initialize supabase client on the client-side
+    const supabaseClient = createClient();
+    setSupabase(supabaseClient);
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         const supaUser = session?.user;
@@ -65,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   const login = async (email: string, pass: string) => {
+    if (!supabase) return false;
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
     if (error) {
         console.error('Login failed:', error.message);
@@ -75,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
     router.push('/login');

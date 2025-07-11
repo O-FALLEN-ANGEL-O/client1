@@ -46,9 +46,12 @@ export const schools: School[] = Array.from({ length: 50 }, (_, i) => ({
   city: faker.location.city(),
 }));
 
+// Helper to capitalize first letter
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 export const courses: Course[] = Array.from({ length: 100 }, (_, i) => ({
   id: `crs_${i + 1}`,
-  name: faker.educator.courseName(),
+  name: `${capitalize(faker.word.adjective())} ${capitalize(faker.word.noun())}`,
   code: `${faker.lorem.word().substring(0,3).toUpperCase()}${faker.number.int({min: 100, max: 599})}`,
 }));
 
