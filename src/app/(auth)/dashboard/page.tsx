@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { Calendar as CalendarIcon, FileDown, Loader2 } from 'lucide-react'
 import { format, type DateRange } from 'date-fns'
-import { cn, exportToStyledExcel } from '@/lib/utils'
+import { cn, exportToExcel } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase-client'
 import { useToast } from '@/hooks/use-toast'
@@ -125,7 +125,7 @@ export default function DashboardPage() {
         return;
     }
     
-    const paymentReportData = data.map(p => ({
+    const reportData = data.map(p => ({
       'Student ID': p.studentId,
       'Student Name': p.studentName,
       'Course': p.course,
@@ -135,17 +135,7 @@ export default function DashboardPage() {
       'Date': format(new Date(p.date), 'yyyy-MM-dd')
     }));
     
-    const powerBiData = data.map(p => ({
-        studentId: p.studentId,
-        studentName: p.studentName,
-        course: p.course,
-        school: p.school,
-        amount: p.amount,
-        paymentType: p.paymentType,
-        date: format(new Date(p.date), 'yyyy-MM-dd')
-      }));
-    
-    exportToStyledExcel('SmartFeeTracker_Report.xlsx', paymentReportData, powerBiData);
+    exportToExcel('SmartFeeTracker_Report.xlsx', reportData);
   }
 
   return (
