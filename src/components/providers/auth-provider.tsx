@@ -1,8 +1,10 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { users, type User } from '@/lib/mock-data';
+import { useRouter, usePathname } from 'next/navigation';
+import { createClient } from '@/lib/supabase-client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { users as mockUsers, type User } from '@/lib/mock-data';
 
 interface AuthContextType {
   user: User | null;
@@ -18,36 +20,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
+  const supabase = createClient();
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('smartfee-user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        const supaUser = session?.user;
+        if (supaUser) {
+          // In a real app, you would fetch the user role from your own database
+          // For this demo, we'll find the user in our mock data to get their role.
+          const matchingMockUser = mockUsers.find(u => u.email === supaUser.email);
+          const userProfile: User = {
+              id: supaUser.id,
+              name: supaUser.user_metadata.name || supaUser.email!,
+              email: supaUser.email!,
+              role: matchingMockUser?.role || 'Staff' // Default to staff if not found
+          }
+          setUser(userProfile);
+        } else {
+          setUser(null);
+          if (pathname !== '/login') {
+            router.push('/login');
+          }
+        }
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to parse user from localStorage", error);
-      localStorage.removeItem('smartfee-user');
-    } finally {
+    );
+
+    // Check initial session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user && pathname !== '/login') {
+        router.push('/login');
+      }
       setLoading(false);
     }
-  }, []);
+    checkSession();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase, router, pathname]);
+
 
   const login = async (email: string, pass: string) => {
-    // This is a mock login function. In a real app, you'd call an API.
-    // The prompt specifies bcrypt, but that's a backend concern.
-    const foundUser = users.find(u => u.email === email && u.password === pass);
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('smartfee-user', JSON.stringify(foundUser));
-      return true;
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+        console.error('Login failed:', error.message);
+        return false;
     }
-    return false;
+    // The onAuthStateChange listener will handle setting the user and redirecting
+    return true;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('smartfee-user');
     router.push('/login');
   };
 

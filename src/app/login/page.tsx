@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import {
@@ -23,8 +23,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('password');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+        router.replace('/dashboard');
+    }
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -32,12 +38,18 @@ export default function LoginPage() {
     setLoading(true);
     const success = await login(email, password);
     setLoading(false);
-    if (success) {
-      router.push('/dashboard');
-    } else {
-      setError('Invalid email or password. Try `admin@example.com` or `staff@example.com` with password `password`.');
+    if (!success) {
+      setError('Invalid email or password. Check your Supabase credentials.');
     }
   };
+
+  if (authLoading || user) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <p>Loading...</p>
+        </div>
+      )
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -85,7 +97,7 @@ export default function LoginPage() {
         </CardContent>
         <CardFooter>
           <p className="text-center text-sm text-muted-foreground w-full">
-            Use admin or staff credentials to log in.
+            Log in with credentials from your Supabase auth table.
           </p>
         </CardFooter>
       </Card>
