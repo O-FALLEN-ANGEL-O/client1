@@ -1,7 +1,11 @@
 // src/lib/seed.ts
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve } from 'path';
 import { createClient } from '@supabase/supabase-js';
 import { schools, courses, payments } from './mock-data';
+
+// Explicitly load .env.local
+config({ path: resolve(process.cwd(), '.env.local') });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
