@@ -26,11 +26,15 @@ export function DataTable<T>({ columns, data }: DataTableProps<T>) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const rowsPerPage = 10;
 
-  const totalPages = Math.ceil(data.length / rowsPerPage);
-  const paginatedData = data.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  const paginatedData = React.useMemo(() => {
+    if (!data) return [];
+    return data.slice(
+      (currentPage - 1) * rowsPerPage,
+      currentPage * rowsPerPage
+    );
+  }, [data, currentPage, rowsPerPage]);
+
+  const totalPages = data ? Math.ceil(data.length / rowsPerPage) : 0;
 
   return (
     <div className="space-y-4">
@@ -88,7 +92,7 @@ export function DataTable<T>({ columns, data }: DataTableProps<T>) {
             variant="outline"
             size="sm"
             onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
+            disabled={currentPage === totalPages || totalPages === 0}
           >
             Next
           </Button>

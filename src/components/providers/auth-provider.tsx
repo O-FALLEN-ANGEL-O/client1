@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const userProfile: User = {
           id: session.user.id,
-          name: session.user.user_metadata.name || session.user.email!,
+          name: profile?.name || session.user.email!,
           email: session.user.email!,
           role: profile?.role || 'Staff'
         };
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           const userProfile: User = {
               id: supaUser.id,
-              name: supaUser.user_metadata.name || supaUser.email!,
+              name: profile?.name || supaUser.email!,
               email: supaUser.email!,
               role: profile?.role || 'Staff'
           };
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Login failed:', error.message);
         return false;
     }
-    // onAuthStateChange will handle setting the user
+    // onAuthStateChange will handle setting the user and redirecting
     return true;
   };
 

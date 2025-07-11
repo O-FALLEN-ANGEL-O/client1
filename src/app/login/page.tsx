@@ -16,13 +16,13 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from '@/components/providers/auth-provider';
 import { Logo } from '@/components/icons';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('password');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -35,9 +35,9 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setIsSubmitting(true);
     const success = await login(email, password);
-    setLoading(false);
+    setIsSubmitting(false);
     if (!success) {
       setError('Invalid email or password. Check your Supabase credentials.');
     }
@@ -46,7 +46,7 @@ export default function LoginPage() {
   if (authLoading || user) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
-            <p>Loading...</p>
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )
   }
@@ -90,8 +90,8 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing In...' : 'Sign In'}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
         </CardContent>
