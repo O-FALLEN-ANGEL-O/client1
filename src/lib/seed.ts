@@ -3,7 +3,7 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import { createClient } from '@supabase/supabase-js';
-import { schools, courses, payments } from './mock-data';
+import { schools, courses, payments, users as mockUsers } from './mock-data';
 
 // Explicitly load .env.local
 config({ path: resolve(process.cwd(), '.env.local') });
@@ -23,6 +23,36 @@ async function seedData() {
   // Note: This script assumes you have tables named 'schools', 'courses', and 'payments'.
   // You must create these tables in your Supabase dashboard before running the seed script.
   // The columns should match the structure of the mock data objects.
+
+  // Seed users
+  console.log('Seeding users...');
+  for (const user of mockUsers) {
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: user.email,
+      password: user.password,
+      email_confirm: true,
+      user_metadata: { name: user.name }
+    });
+
+    if (authError) {
+      console.error(`Error creating auth user ${user.email}:`, authError.message);
+    } else if (authData.user) {
+      console.log(`Auth user ${user.email} created successfully.`);
+      const { error: profileError } = await supabase.from('users').insert({
+        id: authData.user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      });
+
+      if (profileError) {
+        console.error(`Error creating profile for ${user.email}:`, profileError);
+      } else {
+        console.log(`Profile for ${user.email} created successfully.`);
+      }
+    }
+  }
+
 
   // Seed schools
   console.log('Seeding schools...');

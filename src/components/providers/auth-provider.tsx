@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
 import type { User as SupabaseUser, SupabaseClient } from '@supabase/supabase-js';
-import { users as mockUsers, type User } from '@/lib/mock-data';
+import { type User } from '@/lib/mock-data';
 
 interface AuthContextType {
   user: User | null;
@@ -33,17 +33,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         const supaUser = session?.user;
         if (supaUser) {
           // In a real app, you would fetch the user role from your own database
-          // For this demo, we'll find the user in our mock data to get their role.
-          const matchingMockUser = mockUsers.find(u => u.email === supaUser.email);
+          const { data: profile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', supaUser.id)
+            .single();
+
           const userProfile: User = {
               id: supaUser.id,
               name: supaUser.user_metadata.name || supaUser.email!,
               email: supaUser.email!,
-              role: matchingMockUser?.role || 'Staff' // Default to staff if not found
+              role: profile?.role || 'Staff' // Default to staff if not found
           }
           setUser(userProfile);
         } else {
