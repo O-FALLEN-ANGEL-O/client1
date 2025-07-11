@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from 'react'
@@ -49,9 +50,9 @@ export default function DashboardPage() {
 
   const [searchTerm, setSearchTerm] = React.useState('')
   const [date, setDate] = React.useState<DateRange | undefined>()
-  const [paymentType, setPaymentType] = React.useState('')
-  const [schoolName, setSchoolName] = React.useState('')
-  const [courseName, setCourseName] = React.useState('')
+  const [paymentType, setPaymentType] = React.useState('all')
+  const [schoolName, setSchoolName] = React.useState('all')
+  const [courseName, setCourseName] = React.useState('all')
   
   const [supabase] = React.useState(() => createClient());
   const { toast } = useToast();
@@ -90,9 +91,9 @@ export default function DashboardPage() {
       const matchesDate = date?.from && date?.to ?
         new Date(payment.date) >= date.from && new Date(payment.date) <= date.to : true
 
-      const matchesPaymentType = paymentType ? payment.paymentType === paymentType : true
-      const matchesSchool = schoolName ? payment.school === schoolName : true
-      const matchesCourse = courseName ? payment.course === courseName : true
+      const matchesPaymentType = paymentType && paymentType !== 'all' ? payment.paymentType === paymentType : true
+      const matchesSchool = schoolName && schoolName !== 'all' ? payment.school === schoolName : true
+      const matchesCourse = courseName && courseName !== 'all' ? payment.course === courseName : true
 
       return matchesSearch && matchesDate && matchesPaymentType && matchesSchool && matchesCourse
     })
@@ -189,7 +190,7 @@ export default function DashboardPage() {
         <Select value={paymentType} onValueChange={setPaymentType}>
           <SelectTrigger><SelectValue placeholder="Payment Type" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Types</SelectItem>
+            <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="Credit Card">Credit Card</SelectItem>
             <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
             <SelectItem value="Cash">Cash</SelectItem>
@@ -200,14 +201,14 @@ export default function DashboardPage() {
             <Select value={schoolName} onValueChange={setSchoolName}>
                 <SelectTrigger><SelectValue placeholder="School" /></SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">All Schools</SelectItem>
+                    <SelectItem value="all">All Schools</SelectItem>
                     {schools.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
                 </SelectContent>
             </Select>
             <Select value={courseName} onValueChange={setCourseName}>
                 <SelectTrigger><SelectValue placeholder="Course" /></SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">All Courses</SelectItem>
+                    <SelectItem value="all">All Courses</SelectItem>
                     {courses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                 </SelectContent>
             </Select>
