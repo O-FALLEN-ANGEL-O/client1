@@ -1,3 +1,4 @@
+
 // src/lib/seed.ts
 import { config } from 'dotenv';
 import { resolve } from 'path';
@@ -27,7 +28,7 @@ async function seedData() {
   console.log('Seeding schools...');
   const { error: schoolsError } = await supabase.from('schools').insert(schools);
   if (schoolsError) {
-    console.error('Error seeding schools:', schoolsError.message);
+    console.error('Error seeding schools:', schoolsError);
   } else {
     console.log('Successfully seeded schools.');
   }
@@ -36,7 +37,7 @@ async function seedData() {
   console.log('Seeding courses...');
   const { error: coursesError } = await supabase.from('courses').insert(courses);
   if (coursesError) {
-    console.error('Error seeding courses:', coursesError.message);
+    console.error('Error seeding courses:', coursesError);
   } else {
     console.log('Successfully seeded courses.');
   }
@@ -50,7 +51,7 @@ async function seedData() {
     const chunk = payments.slice(i, i + chunkSize);
     const { error: paymentsError } = await supabase.from('payments').insert(chunk);
     if (paymentsError) {
-      console.error(`Error seeding payments chunk ${i / chunkSize + 1}:`, paymentsError.message);
+      console.error(`Error seeding payments chunk ${i / chunkSize + 1}:`, paymentsError);
       // Optional: stop on first error
       // break; 
     }
