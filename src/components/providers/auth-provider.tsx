@@ -24,44 +24,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const getActiveSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        const userProfile: User = {
-          id: session.user.id,
-          name: profile?.name || session.user.email!,
-          email: session.user.email!,
-          role: profile?.role || 'Staff'
-        };
-        setUser(userProfile);
-      }
-      setLoading(false);
-    };
-
-    getActiveSession();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        const supaUser = session?.user;
-        if (supaUser) {
+        if (session?.user) {
           const { data: profile } = await supabase
             .from('users')
             .select('*')
-            .eq('id', supaUser.id)
+            .eq('id', session.user.id)
             .single();
 
           const userProfile: User = {
-              id: supaUser.id,
-              name: profile?.name || supaUser.email!,
-              email: supaUser.email!,
-              role: profile?.role || 'Staff'
+            id: session.user.id,
+            name: profile?.name || session.user.email!,
+            email: session.user.email!,
+            role: profile?.role || 'Staff'
           };
           setUser(userProfile);
         } else {
