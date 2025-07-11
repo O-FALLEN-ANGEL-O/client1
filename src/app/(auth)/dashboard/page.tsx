@@ -47,6 +47,7 @@ export default function DashboardPage() {
   const [schools, setSchools] = React.useState<School[]>([]);
   const [courses, setCourses] = React.useState<Course[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [isInitialLoad, setIsInitialLoad] = React.useState(true);
 
   const [searchTerm, setSearchTerm] = React.useState('')
   const [date, setDate] = React.useState<DateRange | undefined>()
@@ -57,50 +58,84 @@ export default function DashboardPage() {
   const [supabase] = React.useState(() => createClient());
   const { toast } = useToast();
 
-  const fetchData = async () => {
+  const fetchFilters = async () => {
     setLoading(true);
-    const [paymentsRes, schoolsRes, coursesRes] = await Promise.all([
-        supabase.from('payments').select('*'),
-        supabase.from('schools').select('*'),
-        supabase.from('courses').select('*'),
+    const [schoolsRes, coursesRes] = await Promise.all([
+        supabase.from('schools').select('*').order('name'),
+        supabase.from('courses').select('*').order('name'),
     ]);
-
-    if (paymentsRes.error) toast({ title: "Error fetching payments", description: paymentsRes.error.message, variant: 'destructive' });
-    else setData(paymentsRes.data as Payment[]);
 
     if (schoolsRes.error) toast({ title: "Error fetching schools", description: schoolsRes.error.message, variant: 'destructive' });
     else setSchools(schoolsRes.data as School[]);
 
     if (coursesRes.error) toast({ title: "Error fetching courses", description: coursesRes.error.message, variant: 'destructive' });
     else setCourses(coursesRes.data as Course[]);
-
-    setLoading(false);
+    setIsInitialLoad(false); // Filters loaded, now we can fetch payments
   }
 
+  const fetchPayments = React.useCallback(async () => {
+    setLoading(true);
+    
+    let query = supabase.from('payments').select('*');
+
+    if (searchTerm) {
+        query = query.or(`studentName.ilike.%${searchTerm}%,studentId.ilike.%${searchTerm}%`);
+    }
+    if (date?.from) {
+        query = query.gte('date', date.from.toISOString());
+    }
+    if (date?.to) {
+        query = query.lte('date', date.to.toISOString());
+    }
+    if (paymentType !== 'all') {
+        query = query.eq('paymentType', paymentType);
+    }
+    if (schoolName !== 'all') {
+        query = query.eq('school', schoolName);
+    }
+    if (courseName !== 'all') {
+        query = query.eq('course', courseName);
+    }
+
+    const { data: paymentsData, error } = await query.order('date', { ascending: false });
+
+    if (error) {
+      toast({ title: "Error fetching payments", description: error.message, variant: 'destructive' });
+      setData([]);
+    } else {
+      setData(paymentsData as Payment[]);
+    }
+
+    setLoading(false);
+  }, [supabase, toast, searchTerm, date, paymentType, schoolName, courseName]);
+
   React.useEffect(() => {
-    fetchData();
+    fetchFilters();
   }, []);
 
-  const filteredData = React.useMemo(() => {
-    return data.filter(payment => {
-      const lowerSearchTerm = searchTerm.toLowerCase()
-      const matchesSearch = searchTerm ?
-        payment.studentName.toLowerCase().includes(lowerSearchTerm) ||
-        payment.studentId.toLowerCase().includes(lowerSearchTerm) : true
+  React.useEffect(() => {
+    if (!isInitialLoad) {
+      const handler = setTimeout(() => {
+        fetchPayments();
+      }, 500); // Debounce search term input
+      return () => clearTimeout(handler);
+    }
+  }, [searchTerm, isInitialLoad, fetchPayments]);
 
-      const matchesDate = date?.from && date?.to ?
-        new Date(payment.date) >= date.from && new Date(payment.date) <= date.to : true
+  React.useEffect(() => {
+    if (!isInitialLoad) {
+        fetchPayments();
+    }
+  }, [date, paymentType, schoolName, courseName, isInitialLoad, fetchPayments]);
 
-      const matchesPaymentType = paymentType && paymentType !== 'all' ? payment.paymentType === paymentType : true
-      const matchesSchool = schoolName && schoolName !== 'all' ? payment.school === schoolName : true
-      const matchesCourse = courseName && courseName !== 'all' ? payment.course === courseName : true
-
-      return matchesSearch && matchesDate && matchesPaymentType && matchesSchool && matchesCourse
-    })
-  }, [data, searchTerm, date, paymentType, schoolName, courseName])
 
   const handleExport = () => {
-    const paymentReportData = filteredData.map(p => ({
+    if (!data.length) {
+        toast({ title: "No data to export", description: "Please refine your search criteria.", variant: "destructive" });
+        return;
+    }
+    
+    const paymentReportData = data.map(p => ({
       'Student ID': p.studentId,
       'Student Name': p.studentName,
       'Course': p.course,
@@ -112,7 +147,7 @@ export default function DashboardPage() {
 
     exportToCsv('Payment_Report.csv', paymentReportData)
     
-    const powerBiData = filteredData.map(p => ({
+    const powerBiData = data.map(p => ({
         studentId: p.studentId,
         studentName: p.studentName,
         course: p.course,
@@ -123,14 +158,6 @@ export default function DashboardPage() {
       }));
     
     exportToCsv('Power_BI_Data.csv', powerBiData)
-  }
-
-  if (loading) {
-    return (
-        <div className="flex h-full w-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-    );
   }
 
   return (
@@ -214,8 +241,14 @@ export default function DashboardPage() {
             </Select>
         </div>
       </div>
-
-      <DataTable columns={columns} data={filteredData} />
+        
+      {loading ? (
+        <div className="flex h-64 w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <DataTable columns={columns} data={data} />
+      )}
     </div>
   )
 }
