@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useTransition } from 'react';
 import { type User } from '@/lib/mock-data';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { createClient } from '@/lib/supabase-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/providers/auth-provider';
+import { addUser, updateUser, deleteUser } from './actions';
 
-function UserForm({ user, onSave, onCancel }: { user: Partial<User> | null, onSave: (user: Partial<User>) => void, onCancel: () => void }) {
+function UserForm({ user, onSave, onCancel, isPending }: { user: Partial<User> | null, onSave: (user: Partial<User>) => void, onCancel: () => void, isPending: boolean }) {
   const [formData, setFormData] = useState(user || { role: 'Staff' });
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -56,12 +57,15 @@ function UserForm({ user, onSave, onCancel }: { user: Partial<User> | null, onSa
        {!user?.id && (
          <div>
           <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" value={formData.password || ''} onChange={handleChange} required />
+          <Input id="password" name="password" type="password" value={formData.password || ''} onChange={handleChange} required minLength={6} />
         </div>
        )}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-        <Button type="submit">Save User</Button>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={isPending}>Cancel</Button>
+        <Button type="submit" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save User
+        </Button>
       </div>
     </form>
   );
@@ -75,6 +79,7 @@ export default function UsersPage() {
   const [supabase] = useState(() => createClient());
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const [isPending, startTransition] = useTransition();
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -94,63 +99,32 @@ export default function UsersPage() {
   }, [currentUser]);
 
   const handleSave = async (user: Partial<User>) => {
-    const isEditing = !!user.id;
-    
-    if (isEditing) {
-      // Update user profile in 'users' table
-      const { error: profileError } = await supabase.from('users').update({ name: user.name, role: user.role }).eq('id', user.id!);
-      if (profileError) {
-        toast({ title: `Error updating user`, description: profileError.message, variant: "destructive" });
-      } else {
-        toast({ title: `User updated successfully` });
-        await fetchUsers();
-        setIsDialogOpen(false);
-        setEditingUser(null);
-      }
-    } else {
-       // Create a new user
-      if (!user.email || !user.password) {
-        toast({ title: "Error", description: "Email and password are required for new users.", variant: "destructive" });
-        return;
-      }
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: user.email,
-          password: user.password,
-          email_confirm: true,
-          user_metadata: { name: user.name }
-      });
-
-      if (authError) {
-          toast({ title: `Error creating user`, description: authError.message, variant: "destructive" });
-      } else if (authData.user) {
-          const { error: profileError } = await supabase.from('users').insert({
-              id: authData.user.id,
-              name: user.name,
-              email: user.email,
-              role: user.role,
-          });
-          if (profileError) {
-              toast({ title: `Error creating user profile`, description: profileError.message, variant: "destructive" });
-          } else {
-              toast({ title: "User created successfully" });
-              await fetchUsers();
-              setIsDialogOpen(false);
-              setEditingUser(null);
-          }
-      }
-    }
+    startTransition(async () => {
+        const result = user.id ? await updateUser(user) : await addUser(user);
+        
+        if (result.error) {
+            toast({ title: `Error: ${result.error}`, variant: "destructive" });
+        } else {
+            toast({ title: `Success: ${result.success}` });
+            await fetchUsers();
+            setIsDialogOpen(false);
+            setEditingUser(null);
+        }
+    });
   };
   
   const handleDelete = async (userId: string) => {
-    if (!window.confirm("Are you sure you want to delete this user? This action is irreversible.")) return;
+    if (!window.confirm("Are you sure you want to delete this user? This action is irreversible and will delete the user's auth record and profile.")) return;
     
-    const { error } = await supabase.from('users').delete().eq('id', userId);
-    if (error) {
-        toast({ title: "Error deleting user", description: "Could not delete user profile. Deleting from Auth requires server-side logic.", variant: "destructive" });
-    } else {
-        toast({ title: "User profile deleted.", description: "Full deletion from Auth requires a server function." });
-        await fetchUsers();
-    }
+    startTransition(async () => {
+        const result = await deleteUser(userId);
+        if (result.error) {
+            toast({ title: "Error deleting user", description: result.error, variant: "destructive" });
+        } else {
+            toast({ title: "User deleted successfully" });
+            await fetchUsers();
+        }
+    });
   };
 
   const handleOpenDialog = (user: Partial<User> | null = null) => {
@@ -217,9 +191,11 @@ export default function UsersPage() {
                 user={editingUser} 
                 onSave={handleSave} 
                 onCancel={() => {
+                    if (isPending) return;
                     setIsDialogOpen(false);
                     setEditingUser(null);
                 }}
+                isPending={isPending}
             />
           </DialogContent>
         </Dialog>
