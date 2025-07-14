@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:seed": "dotenv -e .env.local -- tsx src/lib/seed.ts"
+    "db:seed": "node scripts/seed.mjs"
   },
   "dependencies": {
     "@faker-js/faker": "^8.4.1",
