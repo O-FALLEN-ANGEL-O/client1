@@ -35,15 +35,14 @@ async function seedData() {
     if (listUsersError) {
         console.error('Error listing users:', listUsersError.message);
     } else {
-        for (const user of authUsers.users) {
-            // Don't delete the default supabase user
-            if (user.email !== 'supabase_admin@supabase.io') {
-                 const { error: deleteProfileError } = await supabase.from('users').delete().eq('id', user.id);
-                 if (deleteProfileError) console.error(`Error deleting profile for ${user.email}:`, deleteProfileError.message);
+        const usersToDelete = authUsers.users.filter(user => user.email !== 'supabase_admin@supabase.io');
+        
+        for (const user of usersToDelete) {
+             const { error: deleteProfileError } = await supabase.from('users').delete().eq('id', user.id);
+             if (deleteProfileError) console.error(`Error deleting profile for ${user.email}:`, deleteProfileError.message);
 
-                const { error: deleteAuthUserError } = await supabase.auth.admin.deleteUser(user.id);
-                if (deleteAuthUserError) console.error(`Error deleting auth user ${user.email}:`, deleteAuthUserError.message);
-            }
+            const { error: deleteAuthUserError } = await supabase.auth.admin.deleteUser(user.id);
+            if (deleteAuthUserError) console.error(`Error deleting auth user ${user.email}:`, deleteAuthUserError.message);
         }
     }
   console.log('Finished deleting data.');
