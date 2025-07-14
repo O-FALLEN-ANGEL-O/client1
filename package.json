@@ -10,10 +10,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:seed": "node scripts/seed.mjs"
+    "db:seed": "dotenv -e .env.local -- tsx src/lib/seed.ts"
   },
   "dependencies": {
-    "@faker-js/faker": "^8.4.1",
     "@genkit-ai/googleai": "^1.13.0",
     "@genkit-ai/next": "^1.13.0",
     "@hookform/resolvers": "^3.9.0",
@@ -62,7 +61,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/faker": "^6.6.9",
+    "@faker-js/faker": "^8.4.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
