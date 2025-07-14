@@ -9,10 +9,10 @@ import { schools, courses, payments, users as mockUsers } from './mock-data';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase URL or service key. Make sure to set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_KEY in your .env.local file.');
+  throw new Error('Missing Supabase URL or service key. Make sure to set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your .env.local file or Vercel environment variables.');
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -116,4 +116,3 @@ async function seedData() {
 }
 
 seedData().catch(console.error);
-
