@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "SmartFeeTracker+",
   description: "A smart fee tracking application",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.svg",
   },
 };
 
