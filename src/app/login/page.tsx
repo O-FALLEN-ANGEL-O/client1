@@ -18,6 +18,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { Logo } from '@/components/icons';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@example.com');
@@ -99,10 +100,18 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter>
-          <p className="text-center text-sm text-muted-foreground w-full">
-            Log in with credentials from your Supabase auth table.
-          </p>
+        <CardFooter className="flex flex-col items-start text-sm text-muted-foreground pt-4">
+          <p className="font-semibold text-foreground mb-2">Demo Credentials:</p>
+          <div className="w-full space-y-2">
+              <div>
+                  <p><span className="font-medium text-foreground">Admin:</span> admin@example.com</p>
+                  <p><span className="font-medium text-foreground">Staff:</span> staff@example.com</p>
+              </div>
+              <Separator />
+               <div>
+                  <p><span className="font-medium text-foreground">Password:</span> password</p>
+               </div>
+          </div>
         </CardFooter>
       </Card>
     </div>
